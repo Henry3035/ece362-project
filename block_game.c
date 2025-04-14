@@ -1,16 +1,23 @@
-#include "stm32f0xx.h"   
+// #include "stm32f0xx.h"   
 
 
 #include <stdio.h>
 #include <Windows.h>
 #include <stdlib.h>
 #include <time.h>
-
+#include <conio.h>
+#include <locale.h>
 
 #define LEFT 75
 #define RIGHT 77
 #define UP 72
 #define DOWN 80
+
+int Score(int score);
+int game_over();
+int stage_level(int a);
+int display_bar(int left, int right);
+int three_block(int n);
 
 // Direction modifiers for the ball
 int ax = -1, ay = -1;     
@@ -36,11 +43,7 @@ int life = 1;
 int block_array[21][14];   
 enum { HIDDEN, SHOW };
 
-/*
- * CursorView:
- * Hides or displays the console cursor.
- * Parameter 'show': nonzero to display the cursor; zero to hide.
- */
+
 void CursorView(char show) {
     HANDLE hConsole;
     CONSOLE_CURSOR_INFO ConsoleCursor;
@@ -50,91 +53,71 @@ void CursorView(char show) {
     SetConsoleCursorInfo(hConsole, &ConsoleCursor);
 }
 
-/*
- * gotoxy:
- * Moves the console cursor to the specified (x,y) coordinate.
- */
+
 void gotoxy(int x, int y) {
     COORD pos = { (SHORT)x, (SHORT)y };
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
 }
 
-/*
- * setcolor:
- * Sets the foreground and background colors in the console.
- * 'color' is the text color; 'bgcolor' is the background color.
- */
+
 void setcolor(int color, int bgcolor) {
     color &= 0xF;
     bgcolor &= 0xF;
     SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), (bgcolor << 4) | color);
 }
 
-/*
- * randomize:
- * Seeds the random number generator.
- * Also discards a few initial random numbers to improve randomness.
- */
+
 void randomize(void) {
     int i;
     srand((unsigned)time(NULL));
-    // Discard some initial numbers
-    for (i = 0; i < (rand() % RAND_MAX); i++)
-        (rand() % RAND_MAX);
+    for(i = 0; i < 100; i++) {
+        rand(); // Generate random numbers to seed the random number generator
+    }
 }
 
-/*
- * show_all:
- * Displays the entire game board (walls, bricks, ball, paddle) on the console.
- */
 int show_all() {
     int i, j;
-    setcolor(10, 0);
     for(i = 0; i < 21; i++) {
         for(j = 0; j < 14; j++) {
-            if(block_array[i][j] == 1) { // Wall
-                setcolor(7, 0);
+            if(block_array[i][j] == 1) { // Wall 
+                setcolor(12, 0);  // red
                 printf("■");
             }
-            else if(block_array[i][j] == 2) { // Brick (type 1)
-                setcolor(10, 0);
+            else if(block_array[i][j] == 2) { // Brick 
+                setcolor(9, 0);   // blue
                 printf("■");
-                setcolor(7, 0);
             }
-            else if(block_array[i][j] == 3) { // Brick (type 2)
-                setcolor(13, 0);
+            else if(block_array[i][j] == 3) { // Brick type 2
+                setcolor(5, 0);   // purple
                 printf("■");
-                setcolor(7, 0);
             }
-            else if(block_array[i][j] == 4) { // Brick (type 3)
-                setcolor(12, 0);
+            else if(block_array[i][j] == 4) { // Brick type 3
+                setcolor(14, 0);  // yellow
                 printf("■");
-                setcolor(7, 0);
             }
             else if(block_array[i][j] == 5) { // Ball
-                setcolor(5, 0);
+                setcolor(11, 0);  // light blue
                 printf("○");
-                setcolor(7, 0);
             }
-            else if(block_array[i][j] == 6) { // Paddle (bar)
-                setcolor(8, 0);
+            else if(block_array[i][j] == 6) { // Bar
+                setcolor(2, 0);   // green
                 printf("□");
-                setcolor(7, 0);
             }
-            else {
+            else { 
                 printf("  ");
             }
         }
         printf("\n");
     }
+    setcolor(15, 0);  // white
     gotoxy(30, 20);
     printf("Score: %d", score_i);
     gotoxy(30, 23);
     printf("Life: %d", life);
+    
     gotoxy(0, 10);
     return 0;
 }
-
 int moving_ball(int x, int y) {
     int i, j;
     
@@ -344,10 +327,7 @@ int moving_ball(int x, int y) {
     return 0;
 }
 
-/*
- * display_bar:
- * Displays the paddle (bar) on the game board between the given left and right positions.
- */
+
 int display_bar(int left, int right) {
     int i;
     for(i = left; i <= right; i++)
@@ -355,11 +335,6 @@ int display_bar(int left, int right) {
     return 0;
 }
 
-/*
- * moving_bar:
- * Moves the paddle based on key input.
- * Adjusts the left, right, and vertical positions based on arrow keys.
- */
 int moving_bar(int left, int right, int up_down) {
     int i, j;
     // Variables to store previous positions
@@ -439,10 +414,6 @@ int moving_bar(int left, int right, int up_down) {
     return 0;
 }
 
-/*
-  Checks whether any bricks (value 2) remain on the game board.
-  Returns the count of remaining bricks; if none remain, the game is cleared.
- */
 int clear_check(int true_false) {
     // Array to store remaining bricks
     int temp_array[200];    
@@ -470,15 +441,13 @@ int clear_check(int true_false) {
     return k;
 }
 
-/*
-   Sets the game speed and paddle positions based on the stage number.
- */
 int stage_level(int a) {
     int i;
     switch(a) {
     case 1:  // Stage 1
         bar_left = 4;
         bar_right = 7;
+        // Time == game speed
         Time = 150;
         break;
     case 2:  // Stage 2
@@ -530,10 +499,6 @@ int stage_level(int a) {
     return 0;
 }
 
-/*
-   Sets up the game board and paddle for a given stage.
-   This function also sets brick locations and the game speed.
- */
 int stage(int a) {
     int i;
     switch(a) {
@@ -764,9 +729,9 @@ int stage(int a) {
 }
 
 /*
- * Score:
- * Calculates and updates the score by adding the base value plus any 
- * additional score from consecutive brick hits.
+    Score:
+    Calculates and updates the score by adding the base value plus any 
+    additional score from consecutive brick hits.
  */
 int Score(int score) {
     score = score + score_plus + 10;
@@ -802,85 +767,7 @@ int game_over() {
     return 0;
 }
 
-/*
- * background:
- * Displays background elements like the "BRICK" text and arrow key instructions.
- */
-int background() {
-    gotoxy(30, 10);
-    setcolor(14, 0);
-    printf("□□□");
-    gotoxy(30, 11);
-    printf("□   □");
-    gotoxy(30, 12);
-    printf("□□□");
-    gotoxy(30, 13);
-    printf("□   □");
-    gotoxy(30, 14);
-    printf("□□□");
 
-    gotoxy(38, 10);
-    setcolor(9, 0);
-    printf("□□□");
-    gotoxy(38, 11);
-    printf("□   □");
-    gotoxy(38, 12);
-    printf("□□□");
-    gotoxy(38, 13);
-    printf("□   □");
-    gotoxy(38, 14);
-    printf("□    □");
-
-    gotoxy(47, 10);
-    setcolor(12, 0);
-    printf("□");
-    gotoxy(47, 11);
-    printf("□");
-    gotoxy(47, 12);
-    printf("□");
-    gotoxy(47, 13);
-    printf("□");
-    gotoxy(47, 14);
-    printf("□");
-
-    gotoxy(50, 10);
-    setcolor(11, 0);
-    printf(" □□");
-    gotoxy(50, 11);
-    printf("□  □");
-    gotoxy(50, 12);
-    printf("□");
-    gotoxy(50, 13);
-    printf("□  □");
-    gotoxy(50, 14);
-    printf(" □□");
-
-    gotoxy(57, 10);
-    setcolor(13, 0);
-    printf("□   □");
-    gotoxy(57, 11);
-    printf("□ □");
-    gotoxy(57, 12);
-    printf("□□");
-    gotoxy(57, 13);
-    printf("□ □");
-    gotoxy(57, 14);
-    printf("□   □");
-
-    gotoxy(40, 29);
-    setcolor(14, 0);
-    printf("△");
-    gotoxy(30, 30);
-    printf("Key Control: ◁ ▽ ▷");
-
-    return 0;
-}
-
-/*
- * init:
- * Initializes the game state when restarting, resets ball and paddle positions,
- * and clears previous paddle locations.
- */
 int init() {
     int i;
     system("cls");        // Clear the console screen
@@ -894,73 +781,8 @@ int init() {
     return 0;
 }
 
-/*
- * intro:
- * Displays the game's introductory screen and asks the player to select a stage.
- */
+
 int intro() {
-    gotoxy(5, 10);
-    setcolor(14, 0);
-    printf("□□□");
-    gotoxy(5, 11);
-    printf("□   □");
-    gotoxy(5, 12);
-    printf("□□□");
-    gotoxy(5, 13);
-    printf("□   □");
-    gotoxy(5, 14);
-    printf("□□□");
-
-    gotoxy(13, 10);
-    setcolor(9, 0);
-    printf("■■■");
-    gotoxy(13, 11);
-    printf("■   ■");
-    gotoxy(13, 12);
-    printf("■■■");
-    gotoxy(13, 13);
-    printf("■   ■");
-    gotoxy(13, 14);
-    printf("■    ■");
-
-    gotoxy(22, 10);
-    setcolor(12, 0);
-    printf("□");
-    gotoxy(22, 11);
-    printf("□");
-    gotoxy(22, 12);
-    printf("□");
-    gotoxy(22, 13);
-    printf("□");
-    gotoxy(22, 14);
-    printf("□");
-
-    gotoxy(25, 10);
-    setcolor(11, 0);
-    printf(" ■■");
-    gotoxy(25, 11);
-    printf("■  ■");
-    gotoxy(25, 12);
-    printf("■");
-    gotoxy(25, 13);
-    printf("■  ■");
-    gotoxy(25, 14);
-    printf(" ■■");
-
-    gotoxy(33, 10);
-    setcolor(13, 0);
-    printf("□   □");
-    gotoxy(33, 11);
-    printf("□ □");
-    gotoxy(33, 12);
-    printf("□□");
-    gotoxy(33, 13);
-    printf("□ □");
-    gotoxy(33, 14);
-    printf("□   □");
-
-    gotoxy(10, 16);
-    setcolor(7, 0);
     printf("Select Stage [1-10] : ");
     scanf("%d", &select_stage);
     return 0;
@@ -1014,22 +836,19 @@ int main() {
     int i, j;
     char keytemp;
     int restart_game = 1;
+    system("chcp 65001");
+    setlocale(LC_ALL, "ko_KR.UTF-8");
 
     while (restart_game) {
         restart_game = 0; 
-        // 초기화      
         return_gameover = 0;    
-         // 목숨 초기화
         life = 1;              
-        // 변수 초기화
         init_variable();        
-        // 인트로 화면
         intro();               
 
         for (i = select_stage; i <= 10; i++) {
             init();
             stage(i);
-            background();
             gotoxy(0, 10);
             CursorView(HIDDEN);
             show_all();
@@ -1051,11 +870,11 @@ int main() {
                 if (j == 0) {
                     if (i == 10) {
                         gotoxy(6, 15);
-                        printf("===============\n");
+                        printf("========\n");
                         gotoxy(6, 16);
-                        printf("A L L   C L E A R\n");
+                        printf("mission clear\n");
                         gotoxy(6, 17);
-                        printf("===============\n");
+                        printf("========\n");
                         break;
                     } else {
                         break;
@@ -1066,16 +885,13 @@ int main() {
 
                 if (return_gameover == 1) {
                     system("cls");
-                    // 다시 시작하도록 플래그 설정
                     restart_game = 1;  
-                    // 현재 while 루프 탈출
                     break;            
                 }
 
                 moving_ball(ab_x, ab_y);
             }
 
-            // 만약 게임오버로 빠져나온 거면 for문도 탈출
             if (restart_game == 1) {
                 break;
             }
